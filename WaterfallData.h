@@ -8,6 +8,8 @@
 template <class T>
 class WaterfallData : public QwtMatrixRasterData
 {
+    static_assert(std::is_arithmetic<T>::value, "WaterfallData's data must be numeric !");
+
 public:
     WaterfallData(double dXMin, double dXMax, // X bounds
                   const size_t historyExtent, // will define Y width
@@ -197,6 +199,8 @@ public:
         }
         return 0;
     }
+
+    const T* getData() const { return m_data; }
 
 protected:
     T* const     m_data;
