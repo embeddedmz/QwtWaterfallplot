@@ -39,6 +39,8 @@ public:
     void clear();
     time_t getLayerDate(const double y) const;
 
+    double getOffset() const { return m_data->getOffset(); }
+
 protected:
     QwtPlot*const             m_plotCurve;
     QwtPlot*const             m_plotSpectrogram;

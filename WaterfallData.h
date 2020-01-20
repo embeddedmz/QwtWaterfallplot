@@ -15,6 +15,7 @@ public:
                   const size_t historyExtent, // will define Y width
                   const size_t layerPoints) :
         m_data(new T[historyExtent * layerPoints]),
+        m_offset(0),
         m_layerPoints(layerPoints),
         m_maxHistoryLength(historyExtent),
         m_currentHistoryLength(0),
@@ -37,7 +38,7 @@ public:
         setInterval(Qt::XAxis,
                     QwtInterval(dXMin, dXMax, QwtInterval::ExcludeMaximum));
         setInterval(Qt::YAxis,
-                    QwtInterval(0, m_maxHistoryLength, QwtInterval::ExcludeMaximum));
+                    QwtInterval(0 + m_offset, m_maxHistoryLength + m_offset, QwtInterval::ExcludeMaximum));
     }
 
     ~WaterfallData() override
@@ -139,6 +140,10 @@ public:
             ++m_currentHistoryLength;
         }
 
+        ++m_offset;
+        setInterval(Qt::YAxis,
+                    QwtInterval(0 + m_offset, m_maxHistoryLength + m_offset, QwtInterval::ExcludeMaximum));
+
         return true;
     }
 
@@ -148,6 +153,10 @@ public:
         m_currentHistoryLength = 0;
 
         std::fill(m_layersTimestamps, m_layersTimestamps + m_maxHistoryLength, 0);
+
+        m_offset = 0;
+        setInterval(Qt::YAxis,
+                    QwtInterval(0, m_maxHistoryLength, QwtInterval::ExcludeMaximum));
     }
 
     inline size_t getLayerPoints() const { return m_layerPoints; }
@@ -202,8 +211,11 @@ public:
 
     const T* getData() const { return m_data; }
 
+    double getOffset() const { return m_offset; }
+
 protected:
     T* const     m_data;
+    double       m_offset;
     const size_t m_layerPoints;          // fft points
     const size_t m_maxHistoryLength;     // max number of layers (Y width)
     size_t       m_currentHistoryLength; // filled layers count

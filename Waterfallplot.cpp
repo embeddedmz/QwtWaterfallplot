@@ -45,13 +45,13 @@ public:
         m_waterfallPlot(waterfall)
     {
     }
-    
+
     // make it public !
     using QwtScaleDraw::invalidateCache;
     
     virtual QwtText label(double v) const
     {
-        time_t ret = m_waterfallPlot.getLayerDate(v);
+        time_t ret = m_waterfallPlot.getLayerDate(v - m_waterfallPlot.getOffset());
         if (ret > 0)
         {
             m_dateTime.setTime_t(ret);
@@ -173,6 +173,7 @@ Waterfallplot::Waterfallplot(double dXMin, double dXMax,
         m_curveXAxisData[x] = m_curveXAxisData[x - 1] + dx;
     }
     
+#if 0
     connect(m_plotCurve->axisWidget(QwtPlot::xBottom), &QwtScaleWidget::scaleDivChanged,
             this,                          &Waterfallplot::scaleDivChanged,
             Qt::QueuedConnection);
@@ -187,6 +188,7 @@ Waterfallplot::Waterfallplot(double dXMin, double dXMax,
     connect(m_plotSpectrogram->axisWidget(QwtPlot::yRight), &QwtScaleWidget::scaleDivChanged,
             this,                                &Waterfallplot::scaleDivChanged,
             Qt::QueuedConnection);
+#endif
 
     /*for ( int axis = 0; axis < QwtPlot::axisCnt; axis++ )
     {
@@ -199,7 +201,7 @@ Waterfallplot::Waterfallplot(double dXMin, double dXMax,
     }*/
 
 
-    updateLayout();
+    //updateLayout();
 }
 
 void Waterfallplot::replot(bool forceRepaint /*= false*/)
@@ -242,10 +244,13 @@ bool Waterfallplot::addData(const float* const dataPtr, const size_t dataLen)
         m_curve->setRawSamples(m_curveXAxisData, m_curveYAxisData, layerPts);
         
         // refresh spectrogram content and Y axis labels
-        m_spectrogram->invalidateCache();
+        //m_spectrogram->invalidateCache();
         auto const yLeftAxis = static_cast<WaterfallTimeScaleDraw*>(
                     m_plotSpectrogram->axisScaleDraw(QwtPlot::yLeft));
         yLeftAxis->invalidateCache();
+
+        const double currentOffset = getOffset();
+        m_plotSpectrogram->setAxisScale(QwtPlot::yLeft, currentOffset, maxHistory + currentOffset);
     }
     return bRet;
 }
