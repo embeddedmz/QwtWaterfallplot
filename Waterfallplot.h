@@ -56,11 +56,18 @@ protected:
     double* m_curveXAxisData;
     double* m_curveYAxisData;
 
-    // TODO......
-    mutable bool m_inScaleSync;
+    mutable bool m_inScaleSync = false;
+
+protected slots:
+   void scaleDivChanged();
+
+protected:
+    void updateLayout();
 
 private:
     //Q_DISABLE_COPY(Waterfallplot)
+
+    void alignAxis(int axisId);
 };
 
 #endif // WATERFALLPLOT_

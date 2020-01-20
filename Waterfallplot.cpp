@@ -37,18 +37,18 @@ public:
 
 class WaterfallTimeScaleDraw: public QwtScaleDraw
 {
-   const Waterfallplot& m_waterfallPlot;
-   mutable QDateTime m_dateTime;
-
+    const Waterfallplot& m_waterfallPlot;
+    mutable QDateTime m_dateTime;
+    
 public:
     WaterfallTimeScaleDraw(const Waterfallplot& waterfall) :
         m_waterfallPlot(waterfall)
     {
     }
-
+    
     // make it public !
     using QwtScaleDraw::invalidateCache;
-
+    
     virtual QwtText label(double v) const
     {
         time_t ret = m_waterfallPlot.getLayerDate(v);
@@ -80,85 +80,91 @@ Waterfallplot::Waterfallplot(double dXMin, double dXMax,
 {
     m_plotCurve->setAutoReplot(false);
     m_plotSpectrogram->setAutoReplot(false);
-
+    
     m_curve->attach(m_plotCurve);
     m_curve->setRenderHint(QwtPlotItem::RenderAntialiased, true);
     //m_curve->setTitle("");
     //m_curve->setPen(...); // pen : color + width
     m_curve->setStyle(QwtPlotCurve::Lines);
     //m_curve->setSymbol(new QwtSymbol(QwtSymbol::Style...,Qt::NoBrush, QPen..., QSize(5, 5)));
-
+    
     m_spectrogram->setData(m_data);
     m_spectrogram->setRenderThreadCount(0); // use system specific thread count
     m_spectrogram->setCachePolicy(QwtPlotRasterItem::PaintCache);
     m_spectrogram->attach(m_plotSpectrogram);
-
+    
     // color map...
     CoolToWarmColorMapRGB* const colorLut = new CoolToWarmColorMapRGB;
     m_spectrogram->setColorMap(colorLut);
-
+    
+    m_plotCurve->enableAxis(QwtPlot::yRight);
+    m_plotCurve->axisWidget(QwtPlot::yRight)->scaleDraw()->enableComponent(QwtScaleDraw::Labels, false);
+    
     // Auto rescale
     m_plotCurve->setAxisAutoScale(QwtPlot::xBottom,       true);
     m_plotCurve->setAxisAutoScale(QwtPlot::yLeft,         true);
+    m_plotCurve->setAxisAutoScale(QwtPlot::yRight,        true);
     m_plotSpectrogram->setAxisAutoScale(QwtPlot::xBottom, true);
     m_plotSpectrogram->setAxisAutoScale(QwtPlot::yLeft,   true);
-
+    
     // the canvas should be perfectly aligned to the boundaries of your curve.
     m_plotSpectrogram->axisScaleEngine(QwtPlot::xBottom)->setAttribute(QwtScaleEngine::Floating, true);
     m_plotSpectrogram->axisScaleEngine(QwtPlot::yLeft)->setAttribute(QwtScaleEngine::Floating, true);
+    m_plotSpectrogram->axisScaleEngine(QwtPlot::yRight)->setAttribute(QwtScaleEngine::Floating, true);
     m_plotSpectrogram->plotLayout()->setAlignCanvasToScales(true);
-
+    
     m_plotCurve->axisScaleEngine(QwtPlot::xBottom)->setAttribute(QwtScaleEngine::Floating, true);
     m_plotCurve->axisScaleEngine(QwtPlot::yLeft)->setAttribute(QwtScaleEngine::Floating, true);
+    m_plotCurve->axisScaleEngine(QwtPlot::yRight)->setAttribute(QwtScaleEngine::Floating, true);
     m_plotCurve->plotLayout()->setAlignCanvasToScales(true);
-
+    
     m_plotSpectrogram->setAutoFillBackground(true);
     m_plotSpectrogram->setPalette(Qt::white);
     m_plotSpectrogram->setCanvasBackground(Qt::white);
-
+    
     m_plotCurve->setAutoFillBackground(true);
     m_plotCurve->setPalette(Qt::white);
     m_plotCurve->setCanvasBackground(Qt::white);
-
+    
     QwtPlotCanvas* const spectroCanvas = dynamic_cast<QwtPlotCanvas*>(m_plotSpectrogram->canvas());
     spectroCanvas->setFrameStyle(QFrame::NoFrame);
-
+    
     QwtPlotCanvas* const curveCanvas = dynamic_cast<QwtPlotCanvas*>(m_plotCurve->canvas());
     curveCanvas->setFrameStyle(QFrame::NoFrame);
-
+    
     // Y axis labels should represent the insert time of a layer (fft)
     m_plotSpectrogram->setAxisScaleDraw(QwtPlot::yLeft, new WaterfallTimeScaleDraw(*this));
     //m_plot->setAxisLabelRotation(QwtPlot::yLeft, -50.0);
     //m_plot->setAxisLabelAlignment(QwtPlot::yLeft, Qt::AlignLeft | Qt::AlignBottom);
-
+    
     // test color bar...
     m_plotSpectrogram->enableAxis(QwtPlot::yRight);
     QwtScaleWidget* axis = m_plotSpectrogram->axisWidget(QwtPlot::yRight);
     axis->setColorBarEnabled(true);
     axis->setColorBarWidth(20);
-
+    
     /*QGridLayout* const gridLayout = new QGridLayout(this);
     //gridLayout->addWidget(m_plotCurve, 0, 0);
     //gridLayout->addWidget(m_plotSpectrogram, 0, 0);
     gridLayout->setContentsMargins(0, 0, 0, 0);
     gridLayout->setSpacing(5);*/
-
+    
     QVBoxLayout* layout = new QVBoxLayout(this);
     //layout->setSpacing(6);
     //layout->setContentsMargins(11, 11, 11, 11);
     //m_plotCurve->setFixedHeight(200);
     layout->addWidget(m_plotCurve, 30);
     layout->addWidget(m_plotSpectrogram, 70);
-
+    
     QSizePolicy policy;
     policy.setVerticalPolicy(QSizePolicy::Ignored);
     policy.setHorizontalPolicy(QSizePolicy::Ignored);
     m_plotCurve->setSizePolicy(policy);
     m_plotSpectrogram->setSizePolicy(policy);
     setSizePolicy(policy);
-
+    
     // TODO : add align stuff (plotmatrix)
-
+    
     // generate curve X axis data
     const double dx = (dXMax - dXMin) / layerPoints; // x spacing
     m_curveXAxisData[0] = dXMin;
@@ -166,6 +172,34 @@ Waterfallplot::Waterfallplot(double dXMin, double dXMax,
     {
         m_curveXAxisData[x] = m_curveXAxisData[x - 1] + dx;
     }
+    
+    connect(m_plotCurve->axisWidget(QwtPlot::xBottom), &QwtScaleWidget::scaleDivChanged,
+            this,                          &Waterfallplot::scaleDivChanged,
+            Qt::QueuedConnection);
+    connect(m_plotSpectrogram->axisWidget(QwtPlot::xBottom), &QwtScaleWidget::scaleDivChanged,
+            this,                                &Waterfallplot::scaleDivChanged,
+            Qt::QueuedConnection);
+
+    // when data is rcvd
+    connect(m_plotSpectrogram->axisWidget(QwtPlot::yLeft), &QwtScaleWidget::scaleDivChanged,
+            this,                                &Waterfallplot::scaleDivChanged,
+            Qt::QueuedConnection);
+    connect(m_plotSpectrogram->axisWidget(QwtPlot::yRight), &QwtScaleWidget::scaleDivChanged,
+            this,                                &Waterfallplot::scaleDivChanged,
+            Qt::QueuedConnection);
+
+    /*for ( int axis = 0; axis < QwtPlot::axisCnt; axis++ )
+    {
+        connect(m_plotCurve->axisWidget(axis), &QwtScaleWidget::scaleDivChanged,
+                this,                          &Waterfallplot::scaleDivChanged,
+                Qt::QueuedConnection);
+        connect(m_plotSpectrogram->axisWidget(axis), &QwtScaleWidget::scaleDivChanged,
+                this,                                &Waterfallplot::scaleDivChanged,
+                Qt::QueuedConnection);
+    }*/
+
+
+    updateLayout();
 }
 
 void Waterfallplot::replot(bool forceRepaint /*= false*/)
@@ -176,10 +210,10 @@ void Waterfallplot::replot(bool forceRepaint /*= false*/)
         QApplication::postEvent(m_plotCurve, new QEvent(QEvent::LayoutRequest));
         QApplication::postEvent(m_plotSpectrogram, new QEvent(QEvent::LayoutRequest));
     }
-
+    
     m_plotCurve->replot();
     m_plotSpectrogram->replot();
-
+    
     if (forceRepaint)
     {
         m_plotCurve->repaint();
@@ -206,7 +240,7 @@ bool Waterfallplot::addData(const float* const dataPtr, const size_t dataLen)
                   wfData + layerPts * maxHistory,
                   m_curveYAxisData);
         m_curve->setRawSamples(m_curveXAxisData, m_curveYAxisData, layerPts);
-
+        
         // refresh spectrogram content and Y axis labels
         m_spectrogram->invalidateCache();
         auto const yLeftAxis = static_cast<WaterfallTimeScaleDraw*>(
@@ -222,13 +256,13 @@ void Waterfallplot::setRange(double dLower, double dUpper)
     {
         std::swap(dLower, dUpper);
     }
-
+    
     // the color bar must be handled in another column (of a QGridLayout)
     // to keep waterfall perfectly aligned with a curve plot !
     if (m_plotSpectrogram->axisEnabled(QwtPlot::yRight))
     {
         m_plotSpectrogram->setAxisScale(QwtPlot::yRight, dLower, dUpper);
-
+        
         QwtScaleWidget* axis = m_plotSpectrogram->axisWidget(QwtPlot::yRight);
         if (axis->isColorBarEnabled())
         {
@@ -247,7 +281,7 @@ void Waterfallplot::setRange(double dLower, double dUpper)
             axis->setColorMap(QwtInterval(dLower, dUpper), colorMap);
         }
     }
-
+    
     m_data->setRange(dLower, dUpper);
     m_spectrogram->invalidateCache();
 }
@@ -293,3 +327,96 @@ void Waterfallplot::setYLabel(const QString& qstrTitle)
 {
     m_plot->setAxisTitle(QwtPlot::yRight, qstrTitle);
 }*/
+
+void Waterfallplot::scaleDivChanged()
+{
+    // apparently, m_inScaleSync is a hack that can be replaced by
+    // blocking signals on a widget but that could be cumbersome
+    // or not possible as the Qwt API doesn't provide any mean to do that
+    if (m_inScaleSync)
+    {
+        return;
+    }
+    m_inScaleSync = true;
+    
+    QwtPlot* updatedPlot;
+    if (m_plotCurve->axisWidget(QwtPlot::xBottom) == sender())
+    {
+        updatedPlot = m_plotCurve;
+    }
+    else if (m_plotSpectrogram->axisWidget(QwtPlot::xBottom) == sender())
+    {
+        updatedPlot = m_plotSpectrogram;
+    }
+    else
+    {
+        updatedPlot = nullptr;
+    }
+    
+    if (updatedPlot)
+    {
+        QwtPlot* plotToUpdate = (updatedPlot == m_plotCurve) ? m_plotSpectrogram : m_plotCurve;
+        plotToUpdate->setAxisScaleDiv(QwtPlot::xBottom,
+                                      updatedPlot->axisScaleDiv(QwtPlot::xBottom));
+        updateLayout();
+    }
+    
+    m_inScaleSync = false;
+}
+
+void Waterfallplot::alignAxis(int axisId)
+{
+    // 1. Align Vertical Axis (only left or right)
+    double maxExtent = 0;
+
+    {
+        QwtScaleWidget* scaleWidget = m_plotCurve->axisWidget(axisId);
+
+        QwtScaleDraw* sd = scaleWidget->scaleDraw();
+        sd->setMinimumExtent(0.0);
+
+        const double extent = sd->extent(scaleWidget->font());
+        if (extent > maxExtent)
+        {
+            maxExtent = extent;
+        }
+    }
+
+    {
+        QwtScaleWidget* scaleWidget = m_plotSpectrogram->axisWidget(axisId);
+
+        QwtScaleDraw* sd = scaleWidget->scaleDraw();
+        sd->setMinimumExtent( 0.0 );
+
+        double extent = sd->extent(scaleWidget->font());
+
+        //extent -= maxExtent;
+        extent += scaleWidget->colorBarWidth() + scaleWidget->spacing();
+
+        if (extent > maxExtent)
+        {
+            maxExtent = extent;
+        }
+    }
+
+    {
+        QwtScaleWidget* scaleWidget = m_plotCurve->axisWidget(axisId);
+        scaleWidget->scaleDraw()->setMinimumExtent(maxExtent);
+    }
+
+    {
+        QwtScaleWidget* scaleWidget = m_plotSpectrogram->axisWidget(axisId);
+        scaleWidget->scaleDraw()->setMinimumExtent(maxExtent);
+    }
+}
+
+void Waterfallplot::updateLayout()
+{
+    // 1. Align Vertical Axis (only left or right)
+    alignAxis(QwtPlot::yRight);
+    alignAxis(QwtPlot::yLeft);
+    
+    // 2. Replot
+    m_plotCurve->replot();
+    m_plotSpectrogram->replot();
+}
