@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <ctime>
 #include <vector>
 
 #include <qapplication.h>
@@ -47,7 +48,7 @@ MainWindow::MainWindow( QWidget *parent ):
     layout->setSpacing(6);
     layout->setContentsMargins(11, 11, 11, 11);
 
-    m_waterfall = new Waterfallplot(0, 500, 64, 126, centralWidget);
+    m_waterfall = new Waterfallplot(nullptr);
 
     layout->addWidget(m_waterfall);
 
@@ -116,10 +117,22 @@ void MainWindow::playData()
 {
     for (auto i = 0u; i < 32; ++i)
     {
-        std::vector<float> dummyData(126);
+        std::vector<double> dummyData(126);
         std::generate(dummyData.begin(), dummyData.end(), []{ return (std::rand() % 256); });
 
-        const bool bRet = m_waterfall->addData(dummyData.data(), dummyData.size());
+        double xMin, xMax;
+        size_t historyLength, layerPoints;
+        m_waterfall->getDataDimensions(xMin, xMax, historyLength, layerPoints);
+
+        if (xMin != 0 || xMax != 500 ||
+            126 != layerPoints ||
+            64 != historyLength)
+        {
+            // log/notify for debug purposes...
+            m_waterfall->setDataDimensions(0, 500, 64, dummyData.size());
+        }
+
+        const bool bRet = m_waterfall->addData(dummyData.data(), dummyData.size(), std::time(nullptr));
         assert(bRet);
 
         // set the range only once (data range)

@@ -35,10 +35,13 @@ public:
             std::swap(dXMin, dXMax);
         }
 
+        m_xMin = dXMin;
+        m_xMax = dXMax;
+
         setInterval(Qt::XAxis,
                     QwtInterval(dXMin, dXMax, QwtInterval::ExcludeMaximum));
         setInterval(Qt::YAxis,
-                    QwtInterval(0 + m_offset, m_maxHistoryLength + m_offset, QwtInterval::ExcludeMaximum));
+                    QwtInterval(m_offset, m_maxHistoryLength + m_offset, QwtInterval::ExcludeMaximum));
     }
 
     ~WaterfallData() override
@@ -112,7 +115,7 @@ public:
         return rect;
     }
 
-    bool addData(const T* const fftData, const size_t length)
+    bool addData(const T* const fftData, const size_t length, const time_t timestamp)
     {
         if (length != m_layerPoints)
         {
@@ -133,7 +136,7 @@ public:
                   m_layersTimestamps + 1 + (m_maxHistoryLength - 1),
                   m_layersTimestamps);
 
-        time(&m_layersTimestamps[m_maxHistoryLength - 1]);
+        m_layersTimestamps[m_maxHistoryLength - 1] = timestamp;
 
         if (m_currentHistoryLength < m_maxHistoryLength)
         {
@@ -142,7 +145,7 @@ public:
 
         ++m_offset;
         setInterval(Qt::YAxis,
-                    QwtInterval(0 + m_offset, m_maxHistoryLength + m_offset, QwtInterval::ExcludeMaximum));
+                    QwtInterval(m_offset, m_maxHistoryLength + m_offset, QwtInterval::ExcludeMaximum));
 
         return true;
     }
@@ -211,6 +214,9 @@ public:
 
     const T* getData() const { return m_data; }
 
+    double getXMin() const { return m_xMin; }
+    double getXMax() const { return m_xMax; }
+
     double getOffset() const { return m_offset; }
 
 protected:
@@ -221,6 +227,9 @@ protected:
     size_t       m_currentHistoryLength; // filled layers count
 
     time_t* const m_layersTimestamps;
+
+    double m_xMin;
+    double m_xMax;
 };
 
 #endif // WATERFALLDATA_H
