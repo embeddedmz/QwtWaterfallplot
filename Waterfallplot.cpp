@@ -571,7 +571,7 @@ void Waterfallplot::alignAxisForColorBar()
     s2->scaleDraw()->setMinimumExtent( 0.0 );
 
     qreal extent = s1->scaleDraw()->extent(s1->font());
-    //extent -= s2->scaleDraw()->extent(s2->font());
+    extent -= s2->scaleDraw()->extent(s2->font());
     extent += s1->colorBarWidth() + s1->spacing();
 
     s2->scaleDraw()->setMinimumExtent(extent);
