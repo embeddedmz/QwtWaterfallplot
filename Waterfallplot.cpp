@@ -159,9 +159,15 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
     LinearColorMapRGB* const colorLut = new LinearColorMapRGB;
     m_spectrogram->setColorMap(colorLut);
 
+    // We need to enable yRight axis in order to align it with the spectrogram's one
+    m_plotCurve->enableAxis(QwtPlot::yRight);
+    m_plotCurve->axisWidget(QwtPlot::yRight)->scaleDraw()->enableComponent(QwtScaleDraw::Ticks, false);
+    m_plotCurve->axisWidget(QwtPlot::yRight)->scaleDraw()->enableComponent(QwtScaleDraw::Labels, false);
+
     // Auto rescale
     m_plotCurve->setAxisAutoScale(QwtPlot::xBottom,       true);
     m_plotCurve->setAxisAutoScale(QwtPlot::yLeft,         true);
+    m_plotCurve->setAxisAutoScale(QwtPlot::yRight,        true);
     m_plotSpectrogram->setAxisAutoScale(QwtPlot::xBottom, true);
     m_plotSpectrogram->setAxisAutoScale(QwtPlot::yLeft,   true);
 
@@ -172,6 +178,7 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
 
     m_plotCurve->axisScaleEngine(QwtPlot::xBottom)->setAttribute(QwtScaleEngine::Floating, true);
     m_plotCurve->axisScaleEngine(QwtPlot::yLeft)->setAttribute(QwtScaleEngine::Floating, true);
+    m_plotCurve->axisScaleEngine(QwtPlot::yRight)->setAttribute(QwtScaleEngine::Floating, true);
     m_plotCurve->plotLayout()->setAlignCanvasToScales(true);
 
     m_plotSpectrogram->setAutoFillBackground(true);
@@ -237,22 +244,12 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
     "- Mouse right button: previous zoomed in area.\n"
     "- Ctrl + mouse right button : zoom out to spectrogram full size.");*/
 
-#if 0
+//#if 0
     connect(m_plotCurve->axisWidget(QwtPlot::xBottom), &QwtScaleWidget::scaleDivChanged,
-            this,                          &Waterfallplot::scaleDivChanged,
-            Qt::QueuedConnection);
+            this,                          &Waterfallplot::scaleDivChanged/*, Qt::QueuedConnection*/);
     connect(m_plotSpectrogram->axisWidget(QwtPlot::xBottom), &QwtScaleWidget::scaleDivChanged,
-            this,                                &Waterfallplot::scaleDivChanged,
-            Qt::QueuedConnection);
-
-    // when data is rcvd
-    connect(m_plotSpectrogram->axisWidget(QwtPlot::yLeft), &QwtScaleWidget::scaleDivChanged,
-            this,                                &Waterfallplot::scaleDivChanged,
-            Qt::QueuedConnection);
-    connect(m_plotSpectrogram->axisWidget(QwtPlot::yRight), &QwtScaleWidget::scaleDivChanged,
-            this,                                &Waterfallplot::scaleDivChanged,
-            Qt::QueuedConnection);
-#endif
+            this,                                &Waterfallplot::scaleDivChanged/*,Qt::QueuedConnection*/);
+//#endif
 }
 
 // From G1x Brillouin plot...
@@ -369,7 +366,8 @@ bool Waterfallplot::addData(const double* const dataPtr, const size_t dataLen, c
         }
 
         // refresh spectrogram content and Y axis labels
-        m_spectrogram->invalidateCache();
+        //m_spectrogram->invalidateCache();
+
         auto const yLeftAxis = static_cast<WaterfallTimeScaleDraw*>(
                     m_plotSpectrogram->axisScaleDraw(QwtPlot::yLeft));
         yLeftAxis->invalidateCache();
@@ -547,11 +545,7 @@ void Waterfallplot::alignAxis(int axisId)
         QwtScaleDraw* sd = scaleWidget->scaleDraw();
         sd->setMinimumExtent( 0.0 );
 
-        double extent = sd->extent(scaleWidget->font());
-
-        //extent -= maxExtent;
-        extent += scaleWidget->colorBarWidth() + scaleWidget->spacing();
-
+        const double extent = sd->extent(scaleWidget->font());
         if (extent > maxExtent)
         {
             maxExtent = extent;
@@ -569,11 +563,25 @@ void Waterfallplot::alignAxis(int axisId)
     }
 }
 
+void Waterfallplot::alignAxisForColorBar()
+{
+    auto s1 = m_plotSpectrogram->axisWidget(QwtPlot::yRight);
+    auto s2 = m_plotCurve->axisWidget(QwtPlot::yRight);
+
+    s2->scaleDraw()->setMinimumExtent( 0.0 );
+
+    qreal extent = s1->scaleDraw()->extent(s1->font());
+    //extent -= s2->scaleDraw()->extent(s2->font());
+    extent += s1->colorBarWidth() + s1->spacing();
+
+    s2->scaleDraw()->setMinimumExtent(extent);
+}
+
 void Waterfallplot::updateLayout()
 {
     // 1. Align Vertical Axis (only left or right)
-    alignAxis(QwtPlot::yRight);
     alignAxis(QwtPlot::yLeft);
+    alignAxisForColorBar();
     
     // 2. Replot
     m_plotCurve->replot();

@@ -81,6 +81,7 @@ private:
     //Q_DISABLE_COPY(Waterfallplot)
 
     void alignAxis(int axisId);
+    void alignAxisForColorBar();
 };
 
 #endif // WATERFALLPLOT_
