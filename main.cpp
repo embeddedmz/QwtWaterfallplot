@@ -73,6 +73,14 @@ MainWindow::MainWindow( QWidget *parent ):
     toolBar->addWidget(btnPlayData);
     QObject::connect(btnPlayData, &QToolButton::clicked, this, &MainWindow::playData);
 
+    QToolButton* btnPicker = new QToolButton(toolBar);
+    btnPicker->setText( "Pick" );
+    //btnPicker->setIcon( QPixmap( zoom_xpm ) );
+    btnPicker->setCheckable( true );
+    btnPicker->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
+    toolBar->addWidget(btnPicker);
+    QObject::connect(btnPicker, &QToolButton::toggled, m_waterfall, &Waterfallplot::setPickerEnabled);
+
     addToolBar(toolBar);
 }
 

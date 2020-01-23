@@ -213,6 +213,7 @@ public:
     }
 
     const T* getData() const { return m_data; }
+    const time_t* getTimes() const { return m_layersTimestamps; }
 
     double getXMin() const { return m_xMin; }
     double getXMax() const { return m_xMax; }
