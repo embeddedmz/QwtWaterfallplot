@@ -137,8 +137,6 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
     m_plotHorCurve(new QwtPlot),
     m_plotVertCurve(new QwtPlot),
     m_plotSpectrogram(new QwtPlot),
-    m_horCurve(new QwtPlotCurve),
-    m_vertCurve(new QwtPlotCurve),
     m_picker(new QwtPlotPicker(QwtPlot::xBottom, QwtPlot::yLeft,
         QwtPlotPicker::CrossRubberBand, QwtPicker::AlwaysOn, m_plotSpectrogram->canvas())),
     m_panner(new QwtPlotPanner(m_plotSpectrogram->canvas())),
@@ -151,19 +149,6 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
     m_plotHorCurve->setAutoReplot(false);
     m_plotVertCurve->setAutoReplot(false);
     m_plotSpectrogram->setAutoReplot(false);
-
-    /* Horizontal Curve */
-    m_horCurve->attach(m_plotHorCurve);
-    m_horCurve->setRenderHint(QwtPlotItem::RenderAntialiased, true);
-    //m_curve->setTitle("");
-    //m_curve->setPen(...); // pen : color + width
-    m_horCurve->setStyle(QwtPlotCurve::Lines);
-    //m_curve->setSymbol(new QwtSymbol(QwtSymbol::Style...,Qt::NoBrush, QPen..., QSize(5, 5)));
-
-    /* Vertical Curve */
-    m_vertCurve->attach(m_plotVertCurve);
-    m_vertCurve->setRenderHint(QwtPlotItem::RenderAntialiased, true);
-    m_vertCurve->setStyle(QwtPlotCurve::Lines);
 
     m_spectrogram->setRenderThreadCount(0); // use system specific thread count
     m_spectrogram->setCachePolicy(QwtPlotRasterItem::PaintCache);
@@ -229,8 +214,6 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
     m_plotSpectrogram->setAxisScaleDraw(QwtPlot::yLeft, new WaterfallTimeScaleDraw(*this));
     //m_plot->setAxisLabelRotation(QwtPlot::yLeft, -50.0);
     //m_plot->setAxisLabelAlignment(QwtPlot::yLeft, Qt::AlignLeft | Qt::AlignBottom);
-
-    m_plotVertCurve->setAxisScaleDraw(QwtPlot::yLeft, new WaterfallTimeScaleDraw(*this));
 
     // test color bar...
     m_plotSpectrogram->enableAxis(QwtPlot::yRight);
@@ -336,26 +319,15 @@ void Waterfallplot::setDataDimensions(double dXMin, double dXMax,
     m_data = new WaterfallData<double>(dXMin, dXMax, historyExtent, layerPoints);
     m_spectrogram->setData(m_data); // NB: owner of the data is m_spectrogram !
 
+    setupCurves();
     freeCurvesData();
-
-    m_horCurveXAxisData  = new double[layerPoints];
-    m_horCurveYAxisData  = new double[layerPoints];
-    m_vertCurveXAxisData = new double[historyExtent];
-    m_vertCurveYAxisData = new double[historyExtent];
+    allocateCurvesData();
 
     // After changing data dimensions, we need to reset curves markers
     // to show the last received data on  the horizontal axis and the history
     // of the middle point
     m_markerX = (dXMax - dXMin) / 2;
     m_markerY = historyExtent - 1;
-
-    // generate curve X axis data
-    const double dx = (dXMax - dXMin) / layerPoints; // x spacing
-    m_horCurveXAxisData[0] = dXMin;
-    for (size_t x = 1u; x < layerPoints; ++x)
-    {
-        m_horCurveXAxisData[x] = m_horCurveXAxisData[x - 1] + dx;
-    }
 
     // scale x
     m_plotHorCurve->setAxisScale(QwtPlot::xBottom, dXMin, dXMax);
@@ -523,7 +495,9 @@ void Waterfallplot::clear()
         m_data->clear();
     }
 
+    setupCurves();
     freeCurvesData();
+    allocateCurvesData();
 }
 
 time_t Waterfallplot::getLayerDate(const double y) const
@@ -715,6 +689,37 @@ void Waterfallplot::updateCurvesData()
     }
 }
 
+void Waterfallplot::allocateCurvesData()
+{
+    if (m_horCurveXAxisData || m_horCurveYAxisData || m_vertCurveXAxisData ||
+        m_vertCurveYAxisData || !m_data)
+    {
+        return;
+    }
+
+    const size_t layerPoints = m_data->getLayerPoints();
+    const double dXMin = m_data->getXMin();
+    const double dXMax = m_data->getXMax();
+    const size_t historyExtent = m_data->getMaxHistoryLength();
+
+    m_horCurveXAxisData  = new double[layerPoints];
+    m_horCurveYAxisData  = new double[layerPoints];
+    m_vertCurveXAxisData = new double[historyExtent];
+    m_vertCurveYAxisData = new double[historyExtent];
+
+    // generate curve X axis data
+    const double dx = (dXMax - dXMin) / layerPoints; // x spacing
+    m_horCurveXAxisData[0] = dXMin;
+    for (size_t x = 1u; x < layerPoints; ++x)
+    {
+        m_horCurveXAxisData[x] = m_horCurveXAxisData[x - 1] + dx;
+    }
+
+    // Reset marker to the default position
+    m_markerX = (dXMax - dXMin) / 2;
+    m_markerY = historyExtent - 1;
+}
+
 void Waterfallplot::freeCurvesData()
 {
     if (m_horCurveXAxisData)
@@ -753,6 +758,11 @@ void Waterfallplot::setPickerEnabled(const bool enabled)
 
 bool Waterfallplot::setMarker(const double x, const double y)
 {
+    if (!m_data)
+    {
+        return false;
+    }
+
     const QwtInterval xInterval = m_data->interval(Qt::XAxis);
     const QwtInterval yInterval = m_data->interval(Qt::YAxis);
     if (!(xInterval.contains(x) && yInterval.contains(y)))
@@ -776,4 +786,28 @@ bool Waterfallplot::setMarker(const double x, const double y)
 void Waterfallplot::selectedPoint(const QPointF& pt)
 {
     setMarker(pt.x(), pt.y());
+}
+
+void Waterfallplot::setupCurves()
+{
+    m_plotHorCurve->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
+    m_plotVertCurve->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
+
+    m_horCurve = new QwtPlotCurve;
+    m_vertCurve = new QwtPlotCurve;
+
+    /* Horizontal Curve */
+    m_horCurve->attach(m_plotHorCurve);
+    m_horCurve->setRenderHint(QwtPlotItem::RenderAntialiased, true);
+    //m_curve->setTitle("");
+    //m_curve->setPen(...); // pen : color + width
+    m_horCurve->setStyle(QwtPlotCurve::Lines);
+    //m_curve->setSymbol(new QwtSymbol(QwtSymbol::Style...,Qt::NoBrush, QPen..., QSize(5, 5)));
+
+    /* Vertical Curve */
+    m_vertCurve->attach(m_plotVertCurve);
+    m_vertCurve->setRenderHint(QwtPlotItem::RenderAntialiased, true);
+    m_vertCurve->setStyle(QwtPlotCurve::Lines);
+
+    m_plotVertCurve->setAxisScaleDraw(QwtPlot::yLeft, new WaterfallTimeScaleDraw(*this));
 }

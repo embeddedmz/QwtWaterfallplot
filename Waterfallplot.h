@@ -61,15 +61,15 @@ protected slots:
     void selectedPoint(const QPointF& pt);
 
 protected:
-    QwtPlot*const             m_plotHorCurve;
-    QwtPlot*const             m_plotVertCurve;
-    QwtPlot*const             m_plotSpectrogram;
-    QwtPlotCurve* const       m_horCurve;
-    QwtPlotCurve* const       m_vertCurve;
-    QwtPlotPicker* const      m_picker;
-    QwtPlotPanner* const      m_panner;
-    QwtPlotSpectrogram* const m_spectrogram;
-    QwtPlotZoomer*            m_zoomer;
+    QwtPlot* const            m_plotHorCurve = nullptr;
+    QwtPlot* const            m_plotVertCurve = nullptr;
+    QwtPlot* const            m_plotSpectrogram = nullptr;
+    QwtPlotCurve*             m_horCurve = nullptr;
+    QwtPlotCurve*             m_vertCurve = nullptr;
+    QwtPlotPicker* const      m_picker = nullptr;
+    QwtPlotPanner* const      m_panner = nullptr;
+    QwtPlotSpectrogram* const m_spectrogram = nullptr;
+    QwtPlotZoomer* const      m_zoomer = nullptr;
 
     // later, the type can be parametrized when instanciating Waterfallplot
     // m_pData will be owned (freed) by m_spectrogram
@@ -96,8 +96,10 @@ protected slots:
 protected:
     void updateLayout();
 
-    void updateCurvesData();
+    void allocateCurvesData();
     void freeCurvesData();
+    void setupCurves();
+    void updateCurvesData();
 
 private:
     //Q_DISABLE_COPY(Waterfallplot)

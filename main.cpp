@@ -12,14 +12,13 @@
 #include <qslider.h>
 #include <qlabel.h>
 #include <qcheckbox.h>
-#include <qprinter.h>
-#include <qprintdialog.h>
 #include <QThread>
 #include <QVBoxLayout>
 
 #include <qwt_color_map.h>
 #include <qwt_plot_renderer.h>
 
+#include "ExportDialog.h"
 #include "Waterfallplot.h"
 
 class MainWindow: public QMainWindow
@@ -28,10 +27,9 @@ public:
     MainWindow(QWidget * = NULL);
 
 public slots:
-#ifndef QT_NO_PRINTER
-    void printPlot();
-#endif
+    void exportPlots();
     void playData();
+    void clearWaterfall();
 
 private:
     Waterfallplot* m_waterfall = nullptr;
@@ -56,15 +54,13 @@ MainWindow::MainWindow( QWidget *parent ):
 
     // Toolbar
     QToolBar *toolBar = new QToolBar( this );
-#ifndef QT_NO_PRINTER
-    QToolButton *btnPrint = new QToolButton( toolBar );
-    btnPrint->setText( "Print" );
-    btnPrint->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
-    toolBar->addWidget( btnPrint );
-    connect( btnPrint, SIGNAL( clicked() ), this, SLOT( printPlot() ) );
+    QToolButton *btnExport = new QToolButton( toolBar );
+    btnExport->setText( "Export" );
+    btnExport->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
+    toolBar->addWidget( btnExport );
+    connect( btnExport, &QToolButton::clicked, this, &MainWindow::exportPlots );
 
     toolBar->addSeparator();
-#endif
 
     QToolButton* btnPlayData = new QToolButton(toolBar);
     btnPlayData->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
@@ -81,6 +77,12 @@ MainWindow::MainWindow( QWidget *parent ):
     toolBar->addWidget(btnPicker);
     QObject::connect(btnPicker, &QToolButton::toggled, m_waterfall, &Waterfallplot::setPickerEnabled);
 
+    QToolButton* btnClear = new QToolButton(toolBar);
+    btnClear->setText("Clear");
+    btnClear->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
+    toolBar->addWidget(btnClear);
+    QObject::connect(btnClear, &QToolButton::clicked, this, &MainWindow::clearWaterfall);
+
     addToolBar(toolBar);
 }
 
@@ -90,36 +92,11 @@ int main( int argc, char **argv )
     a.setStyle( "Windows" );
 
     MainWindow mainWindow;
-    mainWindow.resize( 600, 400 );
+    mainWindow.resize( 1152, 768 );
     mainWindow.show();
 
     return a.exec();
 }
-
-#ifndef QT_NO_PRINTER
-void MainWindow::printPlot()
-{
-    QPrinter printer( QPrinter::HighResolution );
-    printer.setOrientation( QPrinter::Landscape );
-    printer.setOutputFileName( "waterfall.pdf" );
-
-    QPrintDialog dialog( &printer );
-    if (dialog.exec())
-    {
-        QwtPlotRenderer renderer;
-
-        if ( printer.colorMode() == QPrinter::GrayScale )
-        {
-            renderer.setDiscardFlag( QwtPlotRenderer::DiscardBackground );
-            renderer.setDiscardFlag( QwtPlotRenderer::DiscardCanvasBackground );
-            renderer.setDiscardFlag( QwtPlotRenderer::DiscardCanvasFrame );
-            renderer.setLayoutFlag( QwtPlotRenderer::FrameWithScales );
-        }
-        // how to render curve + spectro in the same file ?
-        renderer.renderTo( m_waterfall->getSpectrogramPlot(), printer );
-    }
-}
-#endif
 
 void MainWindow::playData()
 {
@@ -156,5 +133,35 @@ void MainWindow::playData()
         m_waterfall->replot(true); // true: force repaint
 
         QThread::msleep(10);
+    }
+}
+
+void MainWindow::clearWaterfall()
+{
+    m_waterfall->clear();
+    m_waterfall->replot(true); // true: force repaint
+}
+
+void MainWindow::exportPlots()
+{
+    ExportDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        QwtPlotRenderer renderer;
+
+        if (dialog.getExportWaterfallCurve())
+        {
+            renderer.exportTo(m_waterfall->getSpectrogramPlot(), "waterfall.pdf");
+        }
+
+        if (dialog.getExportHorizontalCurve())
+        {
+            renderer.exportTo(m_waterfall->getHorizontalCurvePlot(), "horizontal_plot.pdf");
+        }
+
+        if (dialog.getExportVerticalCurve())
+        {
+            renderer.exportTo(m_waterfall->getVerticalCurvePlot(), "vertical_plot.pdf");
+        }
     }
 }

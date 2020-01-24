@@ -8,6 +8,10 @@ find_package(Qt5Core            REQUIRED)
 find_package(Qt5SerialPort      REQUIRED)
 find_package(Qt5PrintSupport    REQUIRED)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=gnu++0x")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wextra -Wpedantic -g -O0 -std=gnu++0x")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -Wall -Wextra -Wpedantic -std=gnu++0x")
+
 # QWT
 INCLUDE(FindQwt.cmake)
 find_library(Qwt REQUIRED)
@@ -20,7 +24,8 @@ include_directories(.)
 # ==============================================================================
 # Source
 # ==============================================================================
-set(APP_SOURCE main.cpp Waterfallplot.cpp)
+set(APP_SOURCE main.cpp Waterfallplot.cpp ExportDialog.cpp)
+set(UISrcs ExportDialog.ui)
 
 # ==============================================================================
 # Target
