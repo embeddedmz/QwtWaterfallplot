@@ -13,6 +13,7 @@
 #include <qwt_plot.h>
 #include <qwt_plot_canvas.h>
 #include <qwt_plot_curve.h>
+#include <qwt_plot_grid.h>
 #include <qwt_plot_layout.h>
 #include <qwt_plot_marker.h>
 #include <qwt_plot_panner.h>
@@ -141,7 +142,9 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
         QwtPlotPicker::CrossRubberBand, QwtPicker::AlwaysOn, m_plotSpectrogram->canvas())),
     m_panner(new QwtPlotPanner(m_plotSpectrogram->canvas())),
     m_spectrogram(new QwtPlotSpectrogram),
-    m_zoomer(new MyZoomer(m_plotSpectrogram->canvas(), m_spectrogram, *this))
+    m_zoomer(new MyZoomer(m_plotSpectrogram->canvas(), m_spectrogram, *this)),
+    m_horCurveMarker(new QwtPlotMarker),
+    m_vertCurveMarker(new QwtPlotMarker)
 {
     //m_plotHorCurve->setFixedHeight(200);
     //m_plotVertCurve->setFixedWidth(400);
@@ -163,14 +166,18 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
     m_plotHorCurve->enableAxis(QwtPlot::yRight);
     m_plotHorCurve->axisWidget(QwtPlot::yRight)->scaleDraw()->enableComponent(QwtScaleDraw::Ticks, false);
     m_plotHorCurve->axisWidget(QwtPlot::yRight)->scaleDraw()->enableComponent(QwtScaleDraw::Labels, false);
+    QPalette palette = m_plotHorCurve->axisWidget(QwtPlot::yRight)->palette();
+    palette.setColor(QPalette::WindowText, Qt::white);
+    palette.setColor(QPalette::Text, Qt::white);
+    m_plotHorCurve->axisWidget(QwtPlot::yRight)->setPalette(palette);
 
     // Auto rescale
-    m_plotHorCurve->setAxisAutoScale(QwtPlot::xBottom,       true);
-    m_plotHorCurve->setAxisAutoScale(QwtPlot::yLeft,         true);
-    m_plotHorCurve->setAxisAutoScale(QwtPlot::yRight,        true);
-    m_plotVertCurve->setAxisAutoScale(QwtPlot::xBottom,       true);
-    m_plotVertCurve->setAxisAutoScale(QwtPlot::yLeft,         true);
-    m_plotVertCurve->setAxisAutoScale(QwtPlot::yRight,        true);
+    m_plotHorCurve->setAxisAutoScale(QwtPlot::xBottom,    true);
+    m_plotHorCurve->setAxisAutoScale(QwtPlot::yLeft,      true);
+    m_plotHorCurve->setAxisAutoScale(QwtPlot::yRight,     true);
+    m_plotVertCurve->setAxisAutoScale(QwtPlot::xBottom,   true);
+    m_plotVertCurve->setAxisAutoScale(QwtPlot::yLeft,     true);
+    m_plotVertCurve->setAxisAutoScale(QwtPlot::yRight,    true);
     m_plotSpectrogram->setAxisAutoScale(QwtPlot::xBottom, true);
     m_plotSpectrogram->setAxisAutoScale(QwtPlot::yLeft,   true);
 
@@ -289,6 +296,33 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
             this,                                            &Waterfallplot::scaleDivChanged, Qt::QueuedConnection);
     connect(m_plotSpectrogram->axisWidget(QwtPlot::yLeft), &QwtScaleWidget::scaleDivChanged,
             this,                                          &Waterfallplot::scaleDivChanged, Qt::QueuedConnection);
+
+    //m_plotHorCurve->setTitle("Some plot");
+    m_plotVertCurve->setTitle("History plot");
+
+    {
+        QwtPlotGrid* horCurveGrid = new QwtPlotGrid;
+        horCurveGrid->enableXMin( true );
+        horCurveGrid->setMinorPen( QPen( Qt::gray, 0 , Qt::DotLine ) );
+        horCurveGrid->setMajorPen( QPen( Qt::gray, 0 , Qt::DotLine ) );
+        horCurveGrid->attach(m_plotHorCurve);
+
+        QwtPlotGrid* vertCurveGrid = new QwtPlotGrid;
+        vertCurveGrid->enableXMin( true );
+        vertCurveGrid->setMinorPen( QPen( Qt::gray, 0 , Qt::DotLine ) );
+        vertCurveGrid->setMajorPen( QPen( Qt::gray, 0 , Qt::DotLine ) );
+        vertCurveGrid->attach(m_plotVertCurve);
+    }
+
+    {
+        m_horCurveMarker->setLineStyle(QwtPlotMarker::VLine);
+        m_horCurveMarker->setLinePen(Qt::red, 0, Qt::SolidLine);
+        m_horCurveMarker->attach(m_plotHorCurve);
+
+        m_vertCurveMarker->setLineStyle( QwtPlotMarker::HLine );
+        m_vertCurveMarker->setLinePen(Qt::red, 0, Qt::SolidLine );
+        m_vertCurveMarker->attach(m_plotVertCurve);
+    }
 }
 
 Waterfallplot::~Waterfallplot()
@@ -328,6 +362,9 @@ void Waterfallplot::setDataDimensions(double dXMin, double dXMax,
     // of the middle point
     m_markerX = (dXMax - dXMin) / 2;
     m_markerY = historyExtent - 1;
+
+    m_horCurveMarker->setValue(m_markerX, 0.0);
+    m_vertCurveMarker->setValue(0.0, m_markerY);
 
     // scale x
     m_plotHorCurve->setAxisScale(QwtPlot::xBottom, dXMin, dXMax);
@@ -417,6 +454,8 @@ bool Waterfallplot::addData(const double* const dataPtr, const size_t dataLen, c
         const size_t maxHistory = m_data->getMaxHistoryLength();
         m_plotSpectrogram->setAxisScale(QwtPlot::yLeft, currentOffset, maxHistory + currentOffset);
         m_plotVertCurve->setAxisScale(QwtPlot::yLeft, currentOffset, maxHistory + currentOffset);
+
+        m_vertCurveMarker->setValue(0.0, m_markerY + currentOffset);
     }
     return bRet;
 }
@@ -510,19 +549,43 @@ void Waterfallplot::setTitle(const QString& qstrNewTitle)
     m_plotSpectrogram->setTitle(qstrNewTitle);
 }
 
-void Waterfallplot::setXLabel(const QString& qstrTitle)
+void Waterfallplot::setXLabel(const QString& qstrTitle, const int fontPointSize /*= 12*/)
 {
-    m_plotSpectrogram->setAxisTitle(QwtPlot::xBottom, qstrTitle);
+    QFont font;
+    font.setPointSize(fontPointSize);
+
+    QwtText title;
+    title.setText(qstrTitle);
+    title.setFont(font);
+
+    m_plotSpectrogram->setAxisTitle(QwtPlot::xBottom, title);
 }
 
-void Waterfallplot::setYLabel(const QString& qstrTitle)
+void Waterfallplot::setYLabel(const QString& qstrTitle, const int fontPointSize /*= 12*/)
 {
-    m_plotSpectrogram->setAxisTitle(QwtPlot::yLeft, qstrTitle);
+    QFont font;
+    font.setPointSize(fontPointSize);
+
+    QwtText title;
+    title.setText(qstrTitle);
+    title.setFont(font);
+
+    m_plotSpectrogram->setAxisTitle(QwtPlot::yLeft, title);
 }
 
-void Waterfallplot::setZLabel(const QString& qstrTitle)
+void Waterfallplot::setZLabel(const QString& qstrTitle, const int fontPointSize /*= 12*/)
 {
-    m_plotSpectrogram->setAxisTitle(QwtPlot::yRight, qstrTitle);
+    QFont font;
+    font.setPointSize(fontPointSize);
+
+    QwtText title;
+    title.setText(qstrTitle);
+    title.setFont(font);
+
+    m_plotSpectrogram->setAxisTitle(QwtPlot::yRight, title);
+    m_plotHorCurve->setAxisTitle(QwtPlot::yLeft, title);
+    m_plotHorCurve->setAxisTitle(QwtPlot::yRight, title);
+    m_plotVertCurve->setAxisTitle(QwtPlot::xBottom, title);
 }
 
 void Waterfallplot::scaleDivChanged()
@@ -774,6 +837,10 @@ bool Waterfallplot::setMarker(const double x, const double y)
 
     const double offset = m_data->getOffset();
     m_markerY = y - offset;
+
+    // update curves's markers positions
+    m_horCurveMarker->setValue(m_markerX, 0.0);
+    m_vertCurveMarker->setValue(0.0, y);
 
     updateCurvesData();
 

@@ -35,9 +35,9 @@ public:
     void replot(bool forceRepaint = false);
     void setWaterfallVisibility(const bool bVisible);
     void setTitle(const QString& qstrNewTitle);
-    void setXLabel(const QString& qstrTitle);
-    void setYLabel(const QString& qstrTitle);
-    void setZLabel(const QString& qstrTitle);
+    void setXLabel(const QString& qstrTitle, const int fontPointSize = 12);
+    void setYLabel(const QString& qstrTitle, const int fontPointSize = 12);
+    void setZLabel(const QString& qstrTitle, const int fontPointSize = 12);
     QwtPlot* getHorizontalCurvePlot() const { return m_plotHorCurve; }
     QwtPlot* getVerticalCurvePlot() const { return m_plotVertCurve; }
     QwtPlot* getSpectrogramPlot() const { return m_plotSpectrogram; }
@@ -70,6 +70,8 @@ protected:
     QwtPlotPanner* const      m_panner = nullptr;
     QwtPlotSpectrogram* const m_spectrogram = nullptr;
     QwtPlotZoomer* const      m_zoomer = nullptr;
+    QwtPlotMarker* const      m_horCurveMarker = nullptr;
+    QwtPlotMarker* const      m_vertCurveMarker = nullptr;
 
     // later, the type can be parametrized when instanciating Waterfallplot
     // m_pData will be owned (freed) by m_spectrogram

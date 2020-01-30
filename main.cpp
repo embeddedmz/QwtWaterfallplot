@@ -48,6 +48,11 @@ MainWindow::MainWindow( QWidget *parent ):
 
     m_waterfall = new Waterfallplot(nullptr);
 
+    m_waterfall->setTitle("Waterfall Demo");
+    m_waterfall->setXLabel("Distance (m)", 10);
+    m_waterfall->setYLabel("Time", 10);
+    m_waterfall->setZLabel("Temperature (°C)", 10);
+
     layout->addWidget(m_waterfall);
 
     setCentralWidget(centralWidget);
