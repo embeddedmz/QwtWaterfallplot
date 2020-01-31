@@ -392,11 +392,6 @@ void Waterfallplot::getDataDimensions(double& dXMin,
     }
 }
 
-QwtPlot* Waterfallplot::getPlot() const
-{
-    return m_plotSpectrogram;
-}
-
 void Waterfallplot::replot(bool forceRepaint /*= false*/)
 {
     if (!m_plotSpectrogram->isVisible())

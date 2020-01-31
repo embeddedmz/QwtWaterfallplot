@@ -29,8 +29,6 @@ public:
 
     bool setMarker(const double x, const double y);
 
-    QwtPlot* getPlot() const;
-
     // view
     void replot(bool forceRepaint = false);
     void setWaterfallVisibility(const bool bVisible);
