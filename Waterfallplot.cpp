@@ -281,7 +281,8 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
     m_picker->setStateMachine( new QwtPickerDragPointMachine() );
     m_picker->setRubberBandPen( QColor( Qt::green ) );
     m_picker->setRubberBand( QwtPicker::CrossRubberBand );
-    m_picker->setTrackerPen( QColor( Qt::white ) );
+    //m_picker->setTrackerPen( QColor( Qt::white ) );
+    m_picker->setTrackerMode(QwtPicker::AlwaysOff);
     m_picker->setEnabled(false);
     connect(m_picker, static_cast<void(QwtPlotPicker::*)(const QPointF&)>(&QwtPlotPicker::selected),
             this, &Waterfallplot::selectedPoint);
@@ -809,7 +810,7 @@ void Waterfallplot::setPickerEnabled(const bool enabled)
     m_picker->setEnabled(enabled);
 
     m_zoomer->setEnabled(!enabled);
-    m_zoomer->zoom(0);
+    //m_zoomer->zoom(0);
 
     // clear plots ?
 }
