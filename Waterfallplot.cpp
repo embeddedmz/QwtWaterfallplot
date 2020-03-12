@@ -173,9 +173,9 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
 
     // Auto rescale
     m_plotHorCurve->setAxisAutoScale(QwtPlot::xBottom,    true);
-    m_plotHorCurve->setAxisAutoScale(QwtPlot::yLeft,      true);
+    m_plotHorCurve->setAxisAutoScale(QwtPlot::yLeft,      false);
     m_plotHorCurve->setAxisAutoScale(QwtPlot::yRight,     true);
-    m_plotVertCurve->setAxisAutoScale(QwtPlot::xBottom,   true);
+    m_plotVertCurve->setAxisAutoScale(QwtPlot::xBottom,   false);
     m_plotVertCurve->setAxisAutoScale(QwtPlot::yLeft,     true);
     m_plotVertCurve->setAxisAutoScale(QwtPlot::yRight,    true);
     m_plotSpectrogram->setAxisAutoScale(QwtPlot::xBottom, true);
@@ -489,6 +489,10 @@ void Waterfallplot::setRange(double dLower, double dUpper)
         }
     }
 
+    // set vertical plot's X axis and horizontal plot's Y axis scales to the color bar min/max
+    m_plotHorCurve->setAxisScale(QwtPlot::yLeft, dLower, dUpper);
+    m_plotVertCurve->setAxisScale(QwtPlot::xBottom, dLower, dUpper);
+
     if (m_data)
     {
         m_data->setRange(dLower, dUpper);
@@ -741,10 +745,11 @@ void Waterfallplot::updateCurvesData()
 
         m_vertCurve->setRawSamples(m_vertCurveXAxisData, m_vertCurveYAxisData, currentHistory);
 
-        auto resultPair = std::minmax_element(m_vertCurveXAxisData, m_vertCurveXAxisData + currentHistory);
-        const double rangeMin = *resultPair.first;
-        const double rangeMax = *resultPair.second;
-        m_plotVertCurve->setAxisScale(QwtPlot::xBottom, rangeMin, rangeMax);
+        //auto resultPair = std::minmax_element(m_vertCurveXAxisData, m_vertCurveXAxisData + currentHistory);
+        //const double rangeMin = *resultPair.first;
+        //const double rangeMax = *resultPair.second;
+
+        //m_plotVertCurve->setAxisScale(QwtPlot::xBottom, rangeMin, rangeMax);
     }
 }
 
