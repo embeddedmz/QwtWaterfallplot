@@ -3,6 +3,7 @@
 
 #include <QWidget>
 
+#include "ColorMaps.h"
 #include "WaterfallData.h"
 
 class QwtPlot;
@@ -16,7 +17,7 @@ class QwtPlotZoomer;
 class Waterfallplot : public QWidget
 {
 public:
-    Waterfallplot(QWidget* parent);
+    Waterfallplot(QWidget* parent, const ColorMaps::ControlPoints& ctrlPts = ColorMaps::Jet());
     ~Waterfallplot() override;
 
     void setDataDimensions(double dXMin, double dXMax, // X bounds, fixed once for all
@@ -36,6 +37,8 @@ public:
     void setXLabel(const QString& qstrTitle, const int fontPointSize = 12);
     void setYLabel(const QString& qstrTitle, const int fontPointSize = 12);
     void setZLabel(const QString& qstrTitle, const int fontPointSize = 12);
+    bool setColorMap(const ColorMaps::ControlPoints& colorMap);
+    ColorMaps::ControlPoints getColorMap() const;
     QwtPlot* getHorizontalCurvePlot() const { return m_plotHorCurve; }
     QwtPlot* getVerticalCurvePlot() const { return m_plotVertCurve; }
     QwtPlot* getSpectrogramPlot() const { return m_plotSpectrogram; }
@@ -89,6 +92,8 @@ protected:
 
     double m_markerX = 0;
     double m_markerY = 0;
+
+    ColorMaps::ControlPoints m_ctrlPts;
 
 protected slots:
    void scaleDivChanged();

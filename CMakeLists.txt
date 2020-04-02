@@ -24,7 +24,7 @@ include_directories(.)
 # ==============================================================================
 # Source
 # ==============================================================================
-set(APP_SOURCE main.cpp Waterfallplot.cpp ExportDialog.cpp)
+set(APP_SOURCE main.cpp Waterfallplot.cpp ExportDialog.cpp ColorMaps.cpp)
 set(UISrcs ExportDialog.ui)
 
 # ==============================================================================

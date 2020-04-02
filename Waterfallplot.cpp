@@ -27,34 +27,39 @@
 
 namespace
 {
-// a color map taken from ParaView
-class CoolToWarmColorMapRGB : public QwtLinearColorMap
-{
-public:
-    CoolToWarmColorMapRGB() :
-        QwtLinearColorMap(QColor(0.23137*255, 0.298039*255, 0.75294*255),
-                          QColor(0.70588*255, 0.015686*255, 0.14901*255),
-                          QwtColorMap::RGB)
-    {
-        addColorStop(0.5, QColor(0.86499*255, 0.864999*255, 0.86499*255));
-    }
-};
 
-//TODO: give it a nicer name
-class LinearColorMapRGB : public QwtLinearColorMap
+QwtColorMap* controlPointsToQwtColorMap(const ColorMaps::ControlPoints& ctrlPts)
 {
-public:
-    LinearColorMapRGB() :
-        QwtLinearColorMap(Qt::darkBlue, Qt::darkRed, QwtColorMap::RGB)
-      // Qt bug (according to Uwe): using QwtColorMap::Indexed will crash the app
-      // QwtColorMap::RGB in version >= 6.2 is discretized unlike the previous versions !
+    using namespace ColorMaps;
+
+    if (ctrlPts.size() < 2 ||
+        std::get<0>(ctrlPts.front()) != 0. ||
+        std::get<0>(ctrlPts.back())  != 1. ||
+        !std::is_sorted(ctrlPts.cbegin(), ctrlPts.cend(),
+        [](const ControlPoint& x, const ControlPoint& y)
+        {
+            // strict weak ordering
+            return std::get<0>(x) < std::get<0>(y);
+        }))
     {
-        addColorStop(0.2, Qt::blue);
-        addColorStop(0.4, Qt::cyan);
-        addColorStop(0.6, Qt::yellow);
-        addColorStop(0.8, Qt::red);
+        return nullptr;
     }
-};
+
+    QColor from, to;
+    from.setRgbF(std::get<1>(ctrlPts.front()), std::get<2>(ctrlPts.front()), std::get<3>(ctrlPts.front()));
+    to.setRgbF(std::get<1>(ctrlPts.back()), std::get<2>(ctrlPts.back()), std::get<3>(ctrlPts.back()));
+
+    QwtLinearColorMap* lcm = new QwtLinearColorMap(from, to, QwtColorMap::RGB);
+
+    for (size_t i = 1; i < ctrlPts.size() - 1; ++i)
+    {
+        QColor cs;
+        cs.setRgbF(std::get<1>(ctrlPts[i]), std::get<2>(ctrlPts[i]), std::get<3>(ctrlPts[i]));
+        lcm->addColorStop(std::get<0>(ctrlPts[i]), cs);
+    }
+
+    return lcm;
+}
 
 class MyZoomer: public QwtPlotZoomer
 {
@@ -133,7 +138,7 @@ public:
 
 }
 
-Waterfallplot::Waterfallplot(QWidget* parent) :
+Waterfallplot::Waterfallplot(QWidget* parent, const ColorMaps::ControlPoints& ctrlPts /*= ColorMaps::Jet()*/) :
     QWidget(parent),
     m_plotHorCurve(new QwtPlot),
     m_plotVertCurve(new QwtPlot),
@@ -144,7 +149,8 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
     m_spectrogram(new QwtPlotSpectrogram),
     m_zoomer(new MyZoomer(m_plotSpectrogram->canvas(), m_spectrogram, *this)),
     m_horCurveMarker(new QwtPlotMarker),
-    m_vertCurveMarker(new QwtPlotMarker)
+    m_vertCurveMarker(new QwtPlotMarker),
+    m_ctrlPts(ctrlPts)
 {
     //m_plotHorCurve->setFixedHeight(200);
     //m_plotVertCurve->setFixedWidth(400);
@@ -157,10 +163,8 @@ Waterfallplot::Waterfallplot(QWidget* parent) :
     m_spectrogram->setCachePolicy(QwtPlotRasterItem::PaintCache);
     m_spectrogram->attach(m_plotSpectrogram);
 
-    // color map...
-    //CoolToWarmColorMapRGB* const colorLut = new CoolToWarmColorMapRGB;
-    LinearColorMapRGB* const colorLut = new LinearColorMapRGB;
-    m_spectrogram->setColorMap(colorLut);
+    // Setup color map
+    setColorMap(m_ctrlPts);
 
     // We need to enable yRight axis in order to align it with the spectrogram's one
     m_plotHorCurve->enableAxis(QwtPlot::yRight);
@@ -463,8 +467,6 @@ void Waterfallplot::setRange(double dLower, double dUpper)
         std::swap(dLower, dUpper);
     }
 
-    // the color bar must be handled in another column (of a QGridLayout)
-    // to keep waterfall perfectly aligned with a curve plot !
     if (m_plotSpectrogram->axisEnabled(QwtPlot::yRight))
     {
         m_plotSpectrogram->setAxisScale(QwtPlot::yRight, dLower, dUpper);
@@ -481,8 +483,7 @@ void Waterfallplot::setRange(double dLower, double dUpper)
             }
             else
             {
-                //colorMap = new CoolToWarmColorMapRGB;
-                colorMap = new LinearColorMapRGB;
+                colorMap = controlPointsToQwtColorMap(m_ctrlPts);
                 m_bColorBarInitialized = true;
             }
             axis->setColorMap(QwtInterval(dLower, dUpper), colorMap);
@@ -586,6 +587,39 @@ void Waterfallplot::setZLabel(const QString& qstrTitle, const int fontPointSize 
     m_plotHorCurve->setAxisTitle(QwtPlot::yLeft, title);
     m_plotHorCurve->setAxisTitle(QwtPlot::yRight, title);
     m_plotVertCurve->setAxisTitle(QwtPlot::xBottom, title);
+}
+
+bool Waterfallplot::setColorMap(const ColorMaps::ControlPoints& colorMap)
+{
+    QwtColorMap* spectrogramColorMap = controlPointsToQwtColorMap(colorMap);
+    if (!spectrogramColorMap)
+    {
+        return false;
+    }
+    m_ctrlPts = colorMap;
+    m_spectrogram->setColorMap(spectrogramColorMap);
+
+    if (m_plotSpectrogram->axisEnabled(QwtPlot::yRight))
+    {
+        QwtScaleWidget* axis = m_plotSpectrogram->axisWidget(QwtPlot::yRight);
+        if (axis->isColorBarEnabled())
+        {
+            double dLower;
+            double dUpper;
+            getRange(dLower, dUpper);
+
+            axis->setColorMap(QwtInterval(dLower, dUpper), controlPointsToQwtColorMap(m_ctrlPts));
+        }
+    }
+
+    m_spectrogram->invalidateCache();
+
+    return true;
+}
+
+ColorMaps::ControlPoints Waterfallplot::getColorMap() const
+{
+    return m_ctrlPts;
 }
 
 void Waterfallplot::scaleDivChanged()

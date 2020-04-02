@@ -27,6 +27,7 @@ public:
     MainWindow(QWidget * = NULL);
 
 public slots:
+    void changeColorMap();
     void exportPlots();
     void playData();
     void clearWaterfall();
@@ -35,7 +36,7 @@ private:
     Waterfallplot* m_waterfall = nullptr;
 };
 
-MainWindow::MainWindow( QWidget *parent ):
+MainWindow::MainWindow( QWidget *parent ) :
     QMainWindow( parent )
 {
     srand(time(nullptr));
@@ -64,6 +65,12 @@ MainWindow::MainWindow( QWidget *parent ):
     btnExport->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
     toolBar->addWidget( btnExport );
     connect( btnExport, &QToolButton::clicked, this, &MainWindow::exportPlots );
+
+    QToolButton *btnChangeColorMap = new QToolButton( toolBar );
+    btnChangeColorMap->setText( "Change color map" );
+    btnChangeColorMap->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
+    toolBar->addWidget( btnChangeColorMap );
+    connect( btnChangeColorMap, &QToolButton::clicked, this, &MainWindow::changeColorMap );
 
     toolBar->addSeparator();
 
@@ -168,5 +175,25 @@ void MainWindow::exportPlots()
         {
             renderer.exportTo(m_waterfall->getVerticalCurvePlot(), "vertical_plot.pdf");
         }
+    }
+}
+
+void MainWindow::changeColorMap()
+{
+    static bool s_useBBRColorMap = true;
+    if (s_useBBRColorMap)
+    {
+
+        m_waterfall->setColorMap(ColorMaps::BlackBodyRadiation());
+        m_waterfall->replot();
+
+        s_useBBRColorMap = false;
+    }
+    else
+    {
+        m_waterfall->setColorMap(ColorMaps::Jet());
+        m_waterfall->replot();
+
+        s_useBBRColorMap = true;
     }
 }
