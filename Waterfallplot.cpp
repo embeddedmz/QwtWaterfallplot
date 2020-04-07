@@ -347,6 +347,12 @@ void Waterfallplot::autoRescale(const QRectF& rect)
         m_plotSpectrogram->setAxisAutoScale(QwtPlot::yLeft, true);
 
         m_zoomer->setZoomBase();
+
+        m_zoomActive = false;
+    }
+    else
+    {
+        m_zoomActive = true;
     }
 }
 
@@ -452,8 +458,13 @@ bool Waterfallplot::addData(const double* const dataPtr, const size_t dataLen, c
 
         const double currentOffset = getOffset();
         const size_t maxHistory = m_data->getMaxHistoryLength();
-        m_plotSpectrogram->setAxisScale(QwtPlot::yLeft, currentOffset, maxHistory + currentOffset);
-        m_plotVertCurve->setAxisScale(QwtPlot::yLeft, currentOffset, maxHistory + currentOffset);
+
+        const QwtScaleDiv& yDiv = m_plotSpectrogram->axisScaleDiv(QwtPlot::yLeft);
+        const double yMin = (m_zoomActive) ? yDiv.lowerBound() + 1 : currentOffset;
+        const double yMax = (m_zoomActive) ? yDiv.upperBound() + 1 : maxHistory + currentOffset;
+
+        m_plotSpectrogram->setAxisScale(QwtPlot::yLeft, yMin, yMax);
+        m_plotVertCurve->setAxisScale(QwtPlot::yLeft, yMin, yMax);
 
         m_vertCurveMarker->setValue(0.0, m_markerY + currentOffset);
     }

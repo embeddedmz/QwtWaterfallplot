@@ -95,6 +95,8 @@ protected:
 
     ColorMaps::ControlPoints m_ctrlPts;
 
+    bool m_zoomActive = false;
+
 protected slots:
    void scaleDivChanged();
 
