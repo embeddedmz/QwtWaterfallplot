@@ -51,6 +51,8 @@ MainWindow::MainWindow( QWidget *parent ) :
 
     m_waterfall->setTitle("Waterfall Demo");
     m_waterfall->setXLabel("Distance (m)", 10);
+    m_waterfall->setXTooltipUnit("m");
+    m_waterfall->setZTooltipUnit("°C");
     m_waterfall->setYLabel("Time", 10);
     m_waterfall->setZLabel("Temperature (°C)", 10);
 

@@ -96,11 +96,19 @@ public:
             }
 
             const double tempVal = m_spectro->data()->value(pos.x(), pos.y());
-            text = QString("%1m, %2: %3°C").arg(distVal).arg(date).arg(tempVal);
+            text = QString("%1%2, %3: %4%5")
+                    .arg(distVal)
+                    .arg(m_waterfallPlot.m_xUnit)
+                    .arg(date)
+                    .arg(tempVal)
+                    .arg(m_waterfallPlot.m_zUnit);
         }
         else
         {
-            text = QString("%1m: -°C").arg(distVal);
+            text = QString("%1%2: -%3")
+                    .arg(distVal)
+                    .arg(m_waterfallPlot.m_xUnit)
+                    .arg(m_waterfallPlot.m_zUnit);
         }
 
         text.setBackgroundBrush( QBrush( bg ) );
@@ -303,7 +311,9 @@ Waterfallplot::Waterfallplot(QWidget* parent, const ColorMaps::ControlPoints& ct
             this,                                          &Waterfallplot::scaleDivChanged, Qt::QueuedConnection);
 
     //m_plotHorCurve->setTitle("Some plot");
-    m_plotVertCurve->setTitle("History plot");
+    /* you shouldn't put a title as when the window shrinks in size, m_plotVertCurve and m_plotSpectrogram Y axis
+     * will misalign, currently, in Qwt there's no way to avoid titles to misalign axis */
+    m_plotVertCurve->setTitle(" ");
 
     {
         QwtPlotGrid* horCurveGrid = new QwtPlotGrid;
@@ -598,6 +608,16 @@ void Waterfallplot::setZLabel(const QString& qstrTitle, const int fontPointSize 
     m_plotHorCurve->setAxisTitle(QwtPlot::yLeft, title);
     m_plotHorCurve->setAxisTitle(QwtPlot::yRight, title);
     m_plotVertCurve->setAxisTitle(QwtPlot::xBottom, title);
+}
+
+void Waterfallplot::setXTooltipUnit(const QString& xUnit)
+{
+    m_xUnit = xUnit;
+}
+
+void Waterfallplot::setZTooltipUnit(const QString& zUnit)
+{
+    m_zUnit = zUnit;
 }
 
 bool Waterfallplot::setColorMap(const ColorMaps::ControlPoints& colorMap)

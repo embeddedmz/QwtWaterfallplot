@@ -37,6 +37,8 @@ public:
     void setXLabel(const QString& qstrTitle, const int fontPointSize = 12);
     void setYLabel(const QString& qstrTitle, const int fontPointSize = 12);
     void setZLabel(const QString& qstrTitle, const int fontPointSize = 12);
+    void setXTooltipUnit(const QString& xUnit);
+    void setZTooltipUnit(const QString& zUnit);
     bool setColorMap(const ColorMaps::ControlPoints& colorMap);
     ColorMaps::ControlPoints getColorMap() const;
     QwtPlot* getHorizontalCurvePlot() const { return m_plotHorCurve; }
@@ -52,6 +54,9 @@ public:
     time_t getLayerDate(const double y) const;
 
     double getOffset() const { return (m_data) ? m_data->getOffset() : 0; }
+
+    QString m_xUnit;
+    QString m_zUnit;
 
 public slots:
     void setPickerEnabled(const bool enabled);
